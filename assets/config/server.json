@@ -1,0 +1,8 @@
+{
+    "serverURL": "http://localhost:8042/",
+    "qidoRoot": "dicom-web",
+    "wadoRoot": "wado",
+    "stowRoot": "dicom-web/servers/main/stow",
+    "login": "",
+    "password": ""
+}

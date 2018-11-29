@@ -1,0 +1,215 @@
+html{
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+    background:#1B3244;
+}
+body {
+    margin: auto;
+    flex: 0 1 auto;
+    align-self: auto;
+    width: 100%;
+    height: 100%;
+    max-width: 1366px;
+    max-height: 828px;
+    background:#1B3244;
+}
+.app {
+    display: inline-block;
+    border: 1px solid #18BEE0;
+    border-radius: 3px;
+}
+.wraper-element {
+    font-family: Consolas,monaco,monospace;
+    text-shadow: black 1px 1px 0, black -1px -1px 0, black -1px 1px 0, black 1px -1px 0;
+    display: flex;
+    width: 1366px;
+    height: 768px;
+    position: relative;
+    color: #18BEE0;
+}
+.image-element {
+    cursor: crosshair;
+    background: black;
+    position: relative;
+    border: 1px solid #18BEE0;
+    margin: -1px;
+}
+.image-active {    
+    border: 1px solid blue;
+    border-right: none;
+}
+.overlay {
+    padding: 10px;
+    position:absolute;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    pointer-events: none;
+}
+
+.tools {
+    border: 5px solid #1C2D4B;
+    background-color: #1C2D4B;
+    width: 1356px;
+}
+
+.toolbar {
+    padding: 5px;
+    display: inline-block;
+    border: 1px solid black;
+    border-radius: 3px;
+    background-color: #1B3244;
+}
+
+.btn {
+    background-color: #156558;
+    border: 1px solid black;
+    border-radius: 3px;
+    color: white;
+    padding: 5px;
+    margin: 1px;
+    font-size: 16px;
+}
+.active {
+    background-color: #23398E;
+}
+.btn:hover {
+    background-color: #19383D;
+}
+.active:hover {
+    background-color: #19244F;
+}
+.disabled{
+    background-color: grey;
+}
+.disabled:hover {
+    background-color: grey;
+}
+.icon {
+    height: 26px;
+    width: 26px;
+    color: white;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    padding-top: 200px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+    background-color: #1B3244;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid black;
+    color: white;
+    font-family: Consolas,monaco,monospace;
+    border-radius: 5px;
+    width: 930px;
+}
+.content {
+    background-color: #1B3244;
+    margin: auto;
+    padding: 20px;
+    color: white;
+    font-family: Consolas,monaco,monospace;
+    width: 100%;
+    height: 100%
+}
+
+.close {
+    color: #156558;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+.context-menu {
+    display: block;
+    position: absolute;
+    background: white;
+    border: 1px solid grey;
+}
+.context-child {
+    cursor: default;
+    background: white;
+    color: black;
+    font-family: Consolas,monaco,monospace;
+    font-size: 14px;
+    border: 1px solid gray;
+    margin: -1px; 
+    padding: 7px;
+    width: auto;
+    height: auto;
+}
+.context-child:hover {
+    background: lightgrey;
+}
+
+table.settings-table {
+    width: 100%;
+    color: #FFFFFF;
+    text-align: left;
+  }
+  table.settings-table td {
+    font-size: 14px;
+    padding: 4px;
+    font-style: italic;
+  }
+  table.settings-table thead th {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 20px;
+  }
+
+  .lds-dual-ring {
+    /*<div class="lds-dual-ring"></div>*/
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+  }
+  .lds-dual-ring:after {
+    content: "";
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 7px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    border-color: #fff transparent #fff transparent;
+    animation: lds-dual-ring 1.2s linear infinite;
+  }
+  @keyframes lds-dual-ring {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .warning {
+      padding: 10px;
+      margin: 15px 0px 15px 0px;
+      color: #C36642;
+      background-color: #F2DEDE;
+      border: 1px dashed #C36642;
+      border-radius: 5px;
+  }
