@@ -35,12 +35,11 @@ body {
     cursor: crosshair;
     background: black;
     position: relative;
-    border: 1px solid #18BEE0;
     margin: -1px;
+    border: 1px solid #18BEE0;
 }
-.image-active {    
+.image-active {
     border: 1px solid blue;
-    border-right: none;
 }
 .overlay {
     padding: 10px;

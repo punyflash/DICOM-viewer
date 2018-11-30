@@ -86,33 +86,103 @@ const dicomWebClient = require('dicomweb-client');
 
 }(cornerstone));
 
+class Viewer {
+    constructor(toolgroups){
+        this.elements = [];
+        this.toolgroups = toolgroups;
+        this.active = 0;
+
+        toolgroups.forEach((group, i) => {
+            $("#tools").append('<div id="toolbar'+i+'" class="toolbar"></div>');
+            group.forEach((tool,j) => {
+                if(tool.headIcon) $("#toolbar"+i).append('<img class="icon" src="'+tool.headIcon+'">');
+                $("#toolbar"+i).append('<button id="'+tool.id+'" class="btn"><img class="icon" src="'+tool.icon+'"></button>');
+                $("#"+tool.id).click(tool.click);
+            })
+        });
+        this.createElement();
+    }
+    createElement(){
+        const id = this.elements.length;
+        $("#images").append('<div id="image'+id+'" class="image-element"></div>');
+        this.elements.push({element: undefined, image: $("#image"+id)});
+        this.elements.forEach(e => {
+            if(id>1) e.image[0].style = "width:50%;height:100%;display:inline-block;";
+            else e.image[0].style = "width:100%;height:100%;display:inline-block;";
+            if(e.element) cornerstone.resize(e.element.element);
+        })
+        return this.elements.length;
+    }
+    destroyLastElement(){
+        const id = this.elements.length-1;
+        if(this.elements[id].element) this.elements[id].element.destroy();
+        this.elements[id].image.remove();
+        this.elements.forEach(e => {
+            if(id>1) e.image[0].style = "width:50%;height:100%;display:inline-block;";
+            else e.image[0].style = "width:100%;height:100%;display:inline-block;";
+            if(e.element) cornerstone.resize(e.element.element);
+        })
+    }
+    loadFile(into, file){ 
+        const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(file);
+        this.loadFileByImageId(into, imageId);
+    }
+    loadFileByImageId(into, imageId){
+        if(!this.elements[into]) return;
+        this.elements[into].element = new DICOMImage($("#image"+this.elements[into].image)[0], imageId);
+        this.setActiveElement(into);
+    }
+    setActiveElement(id){
+        if(id > this.elements.length) return;
+        this.elements[this.active].element
+        this.active = id;
+        const element = this.elements[id].element;
+
+        toolgroups.forEach((group, i) => {
+            group.forEach(tool => {
+                $("#"+tool.id).removeClass('active');
+                $("#"+tool.id).removeClass('disabled');
+                $("#"+tool.id).prop('disabled', false);
+
+                if(!element && (tool.id != "home" || tool.id != "connect")){
+                    $("#"+tool.id).prop('disabled', true);
+                    $("#"+tool.id).addClass('disabled');
+                    continue;
+                }
+                if(i==2){
+                    if(element && tool.id == "markers" && element.Orientation) $("#"+tool.id).addClass('active');
+                    else if(element && tool.id == "scale" && element.Scale) $("#"+tool.id).addClass('active');
+                    else if(element && tool.id == "hide" && !element.Drawings) $("#"+tool.id).addClass('active');
+                    else if(element && tool.id == "hide-meta" && !element.Meta) $("#"+tool.id).addClass('active');
+                }            
+                if(i==3) if(element && tool.id == element.LMBTool) $("#"+tool.id).addClass('active');
+    
+                if(i==4) if(element && tool.id == element.RMBTool) $("#"+tool.id).addClass('active');
+            });
+        });
+
+        for(var i = 0; i < this.elements.length; i++){
+            this.elements[i].image.removeClass("image-active");
+            if(i==id) this.elements[i].image.addClass("image-active");
+        }
+    }
+    getActiveCornerstoneElement(){
+        return this.elements[this.active].element.element;
+    }
+    getActiveElement(){
+        return this.elements[this.active].element;
+    }
+}
+
 class DICOMImage {
     constructor(element, imageId){
         this.element = element;
-        this.imageId = imageId;
-        this.Orientation = false;
-        this.Drawings = true;
-        this.Scale = false;
-        this.Meta = true;
-        this.MetaChanger = {pixelSpacing: undefined, orientationPatient: undefined, positionPatient: undefined};
-        this.stack = {currentImageIdIndex : 0 ,imageIds: [], id: ''};
-        this.LMBTool = '';
-        this.RMBTool = '';
-
-        cornerstone.enable(element);
-        this._createMetaHandles(element.id);
-        this._registerEvents(element);
-
-        cornerstone.loadAndCacheImage(imageId).then((image) => {
-            this._setMeta(image.data);
-            cornerstone.displayImage(element, image);
-            this._enableTools(element);
-        });
+        this.setNewImage(imageId);
     }
 
     setNewImage(imageId){
-        var element = this.element; 
-        this.destroy();
+        var element = this.element;
+        try {this.destroy()}catch {}
         this.imageId = imageId;
         this.Orientation = false;
         this.Drawings = true;
@@ -125,7 +195,7 @@ class DICOMImage {
 
         cornerstone.enable(element);
         this._createMetaHandles(element.id);
-        this._registerEvents(element);
+        this._registerEvents();
 
         cornerstone.loadAndCacheImage(imageId).then((image) => {
             this._setMeta(image.data);
@@ -141,8 +211,8 @@ class DICOMImage {
         this.Orientation = value;
         if(value) cornerstoneTools.orientationMarkers.enable(this.element);
         else cornerstoneTools.orientationMarkers.disable(this.element);
-        
-    }    
+        cornerstone.updateImage(this.element);
+    }
     showDrawings(value){
         this.Drawings = value;
         if(value){
@@ -165,6 +235,7 @@ class DICOMImage {
     }
     showMeta(value){
         this.Meta = value;
+        cornerstone.updateImage(this.element);
     }
     showScale(value){
         this.Scale = value;
@@ -316,10 +387,10 @@ class DICOMImage {
         cornerstoneTools.stackScrollWheel.activate(this.element);
     }
     _createMetaHandles(elementId){
-        $("#"+elementId).append('<div id="topleft'+elementId+'"class="overlay" style="position: absolute; top: 0px; left: 0px; text-align: left;">k</div>'+
-                                '<div id="topright'+elementId+'"class="overlay" style="position: absolute; top: 0px; right: 0px; text-align: right;">k</div>'+
-                                '<div id="bottomleft'+elementId+'"class="overlay" style="position: absolute; bottom: 0px; left: 0px; text-align: left;">k</div>'+
-                                '<div id="bottomright'+elementId+'"class="overlay" style="position: absolute; bottom: 0px; right: 0px; text-align: right;">k</div>');
+        $("#"+elementId).append('<div id="topleft'+elementId+'"class="overlay" style="position: absolute; top: 0px; left: 0px; text-align: left;"></div>'+
+                                '<div id="topright'+elementId+'"class="overlay" style="position: absolute; top: 0px; right: 0px; text-align: right;"></div>'+
+                                '<div id="bottomleft'+elementId+'"class="overlay" style="position: absolute; bottom: 0px; left: 0px; text-align: left;"></div>'+
+                                '<div id="bottomright'+elementId+'"class="overlay" style="position: absolute; bottom: 0px; right: 0px; text-align: right;"></div>');
         this.overlay = {
             topleft: $("#topleft"+elementId)[0],
             topright: $("#topright"+elementId)[0],
@@ -327,8 +398,112 @@ class DICOMImage {
             bottomright: $("#bottomright"+elementId)[0]
         }
     }
-    _registerEvents(element){
-        console.log(this.overlay);
+    _registerEvents(){
+        var _this = this;
+        this.element.addEventListener("mousemove", function(event) {
+            _this._mouseMove(event);
+        });
+        this.element.addEventListener("cornerstoneimagerendered", function(event) {
+            _this._imageRendered(event);
+        });
+        this.element.addEventListener("contextmenu", function(event) {
+            _this._contextMenu(event);
+        });
+        window.addEventListener('click', function(e) {
+            _this._deleteAllMenus();
+        });
+    }
+    _mouseMove(event) {
+        if(!this.stack.imageIds[0] || !this.Meta) return;
+        const pixelCoords = cornerstone.pageToPixel(this.element, event.pageX, event.pageY);
+        this.overlay.bottomleft.innerHTML = '';
+        if(this.renderData && pixelCoords.x>0 && pixelCoords.y>0 && pixelCoords.x<=this.renderData.image.columns && pixelCoords.y<=this.renderData.image.rows) {
+            this.overlay.bottomleft.innerHTML += " X: " + pixelCoords.x.toFixed(0) + " Y: " + pixelCoords.y.toFixed(0);
+        }
+    }
+    _imageRendered(event) {
+        cornerstone.setToPixelCoordinateSystem(event.detail.enabledElement, event.detail.canvasContext);
+        this.renderData = event.detail;
+
+        if(this.Meta) {
+            this.overlay.topleft.innerHTML = 'Im: '+(this.stack.currentImageIdIndex+1)+'/'+this.stack.imageIds.length;
+            this.overlay.bottomright.innerHTML = "WW: " + Math.round(event.detail.viewport.voi.windowWidth) + 
+                                                 " WL: " + Math.round(event.detail.viewport.voi.windowCenter) + 
+                                                 " Zoom: " + event.detail.viewport.scale.toFixed(2);
+            if(this.metaData){
+                if(this.metaData.string('x00200011')) this.overlay.topleft.innerHTML += '</br>Se: '+this.metaData.string('x00200011');
+                this.overlay.topright.innerHTML = '';
+                if(this.metaData.string('x00100010')) this.overlay.topright.innerHTML += this.metaData.string('x00100010')
+                    .replace("^", " ").replace("_", " ").replace(";", " ").replace(".", " ").replace(",", " ")+'<br>';
+                
+                if(this.metaData.string('x00100020')) this.overlay.topright.innerHTML += this.metaData.string('x00100020')+'<br>';
+                if(this.metaData.string('x00100030')) 
+                    this.overlay.topright.innerHTML += this.metaData.string('x00100030').substr(6,2) + '.' + 
+                                                       this.metaData.string('x00100030').substr(4,2) + '.' + 
+                                                       this.metaData.string('x00100030').substr(0,4);
+                
+                if(this.metaData.string('x00100040')) this.overlay.topright.innerHTML += ' ' + this.metaData.string('x00100040')+ '<br>'
+                if(this.metaData.string('x00080080')) this.overlay.topright.innerHTML += this.metaData.string('x00080080')+ '<br>'
+                if(this.metaData.string('x00080050')) this.overlay.topright.innerHTML += this.metaData.string('x00080050')+ '<br>'
+                if(this.metaData.string('x0008103e')) this.overlay.topright.innerHTML += '<br>' +this.metaData.string('x0008103e')+ '<br>'
+                if(this.metaData.string('x00080022') && this.metaData.string('x00080032')) 
+                    this.overlay.topright.innerHTML += '<br>' + this.metaData.string('x00080022').substr(6,2) + '.' + 
+                                                        this.metaData.string('x00080022').substr(4,2) + '.' + 
+                                                        this.metaData.string('x00080022').substr(0,4) + ' ' + 
+                                                        this.metaData.string('x00080032').substr(0,2) + ':' + 
+                                                        this.metaData.string('x00080032').substr(2,2) + ':' + 
+                                                        this.metaData.string('x00080032').substr(4,2);
+            }
+        }
+        else {
+            this.overlay.topright.innerHTML = '';
+            this.overlay.bottomright.innerHTML = '';
+            this.overlay.topleft.innerHTML = '';
+            this.overlay.bottomleft.innerHTML = '';
+        }
+    }
+    _contextMenu(event) {
+        this._deleteAllMenus();
+        const supportedTools = ['length', 'ellipticalRoi', 'rectangleRoi', 'simpleAngle', 'probe', 'arrowAnnotate', 'seedAnnotate'];
+        const pixelCoords = {x: event.offsetX, y: event.offsetY};
+        const element = this.element;
+        var childs = [];
+        var success = false;
+
+        supportedTools.forEach(toolName => {
+            const state = cornerstoneTools.getToolState(element, toolName);
+            const check = cornerstoneTools[toolName].pointNearTool;
+            if(state) state.data.forEach((data, j) => {
+                if(check(element,data,pixelCoords)){
+                    success = true;
+                    childs.push(function(){
+                        return $('<div class="context-child">Remove '+toolName+(j+1)+'</div>').click(function(e){
+                            cornerstoneTools.removeToolState(element,toolName,data);
+                            cornerstone.updateImage(element);
+                        })
+                    });
+                }
+            })
+        });
+        if(success) {
+            $("body").append('<div id="context" class="context-menu" style="top:'+event.pageY+';left:'+event.pageX+';"></div>');
+            childs.forEach(e => $("#context").append(e));
+        }
+    }
+    _deleteAllMenus(){
+        while (document.getElementsByClassName('context-menu')[0]) {
+            document.getElementsByClassName('context-menu')[0].remove();
+        }
+    }
+    _Loading(value){
+        if(value){
+            this.overlay.topleft.innerHTML = '<div class="lds-dual-ring"></div>';
+            this.Loading = true;
+        }
+        else {
+            this.overlay.topleft.innerHTML = '';
+            this.Loading = false;
+        }
     }
 }
   function setCornerstoneConfig(){

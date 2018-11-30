@@ -1,31 +1,31 @@
 var toolgroups = [
     [
         {   
-            id: 'home', icon: 'icons/home.svg', disabled: false,
+            id: 'home', icon: 'icons/home.svg',
             click: function(e){
                 window.location.replace(window.location.protocol+'//'+window.location.host);
             }
         },
         {
-            id: 'open', icon: 'icons/file.svg', disabled: false,
+            id: 'open', icon: 'icons/file.svg',
             click: function(e){
                 $('#file').click();
             }
         },
         {
-            id: 'connect', icon: 'icons/connect.svg', disabled: false,
+            id: 'connect', icon: 'icons/connect.svg',
             click: function(e){
                 //TODO: 
             }
         },
         {
-            id: 'save', icon: 'icons/download.svg', disabled: true,
+            id: 'save', icon: 'icons/download.svg',
             click: function(e){
-                cornerstoneTools.saveAs(getActiveElement(elements).element, 'dcm-export.jpg', 'image/jpg');
+                cornerstoneTools.saveAs(viewer.getActiveCornerstoneElement(), 'dcm-export.jpg', 'image/jpg');
             }
         },
         {
-            id: 'settings', icon: 'icons/settings.svg', disabled: true,
+            id: 'settings', icon: 'icons/settings.svg',
             click: function(e){
                 //TODO: 
             }
@@ -33,59 +33,59 @@ var toolgroups = [
     ],
     [
         {   
-            id: 'invert', icon: 'icons/invert.svg', disabled: true,
+            id: 'invert', icon: 'icons/invert.svg',
             click: function(e){
-                const element = getActiveElement(elements).element;
+                const element = viewer.getActiveCornerstoneElement();
                 const viewport = cornerstone.getViewport(element);
                 viewport.invert = !viewport.invert;
                 cornerstone.setViewport(element, viewport);
             }
         },
         {
-            id: 'hflip', icon: 'icons/flip-h.svg', disabled: true,
+            id: 'hflip', icon: 'icons/flip-h.svg',
             click: function(e){
-                const element = getActiveElement(elements).element;
+                const element = viewer.getActiveCornerstoneElement();
                 const viewport = cornerstone.getViewport(element);
                 viewport.hflip = !viewport.hflip;
                 cornerstone.setViewport(element, viewport);
             }
         },
         {
-            id: 'vflip', icon: 'icons/flip-v.svg', disabled: true,
+            id: 'vflip', icon: 'icons/flip-v.svg',
             click: function(e){
-                const element = getActiveElement(elements).element;
+                const element = viewer.getActiveCornerstoneElement();
                 const viewport = cornerstone.getViewport(element);
                 viewport.vflip = !viewport.vflip;
                 cornerstone.setViewport(element, viewport);
             }
         },
         {
-            id: 'rotation', icon: 'icons/rotate.svg', disabled: true,
+            id: 'rotation', icon: 'icons/rotate.svg',
             click: function(e){
-                const element = getActiveElement(elements).element;
+                const element = viewer.getActiveCornerstoneElement();
                 const viewport = cornerstone.getViewport(element);
                 viewport.rotation += 90;
                 cornerstone.setViewport(element, viewport);
             }
         },
         {
-            id: 'reset', icon: 'icons/reset.svg', disabled: true,
+            id: 'reset', icon: 'icons/reset.svg',
             click: function(e){
-                cornerstone.reset(getActiveElement(elements).element);
+                cornerstone.reset(viewer.getActiveCornerstoneElement());
             }
         },
         {
-            id: 'double-view', icon: 'icons/squares.svg', disabled: true,
+            id: 'double-view', icon: 'icons/squares.svg',
             click: function(e){
-                //TODO: 
+                //TODO:
             }
         }
     ],
     [
         {   
-            id: 'markers', icon: 'icons/orientation.svg', disabled: true,
+            id: 'markers', icon: 'icons/orientation.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.Orientation) {
                     element.Orientation = false;
                     element.showOrientation(false);
@@ -99,9 +99,9 @@ var toolgroups = [
             }
         },
         {
-            id: 'scale', icon: 'icons/scale.svg', disabled: true,
+            id: 'scale', icon: 'icons/scale.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.Scale) {
                     element.Scale = false;
                     element.showScale(false);
@@ -115,9 +115,9 @@ var toolgroups = [
             }
         },
         {
-            id: 'hide', icon: 'icons/hide.svg', disabled: true,
+            id: 'hide', icon: 'icons/hide.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.Drawings) {
                     element.Drawings = false;
                     element.showDrawings(false);
@@ -131,81 +131,119 @@ var toolgroups = [
             }
         },
         {
-            id: 'hide-meta', icon: 'icons/hide-meta.svg', disabled: true,
+            id: 'hide-meta', icon: 'icons/hide-meta.svg',
             click: function(e){
-                setElementTools(getActiveElement(elements));
+                const element = viewer.getActiveElement();
+                if(element.Meta) {
+                    element.Meta = false;
+                    element.showMeta(false);
+                    $("#hide-meta").addClass("active");
+                }
+                else {
+                    element.Meta = true;
+                    element.showMeta(true);
+                    $("#hide-meta").removeClass("active");
+                }
             }
         }
     ],
     [
         {   
             headIcon: 'icons/LMB.svg',
-            id: 'wwwc', icon: 'icons/wwwl.svg', disabled: true,
+            id: 'wwwc', icon: 'icons/wwwl.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('wwwc');
                 $("#wwwc").addClass("active");
             }
         },
         {
-            id: 'length', icon: 'icons/line.svg', disabled: true,
+            id: 'length', icon: 'icons/line.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('length');
                 $("#length").addClass("active");
             }
         },
         {
-            id: 'angle', icon: 'icons/angle.svg', disabled: true,
+            id: 'angle', icon: 'icons/angle.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('angle');
                 $("#angle").addClass("active");
             }
         },
         {
-            id: 'rectangle', icon: 'icons/rectangle.svg', disabled: true,
+            id: 'rectangle', icon: 'icons/rectangle.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('rectangle');
                 $("#rectangle").addClass("active");
             }
         },
         {
-            id: 'elipse', icon: 'icons/elipse.svg', disabled: true,
+            id: 'elipse', icon: 'icons/elipse.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('elipse');
                 $("#elipse").addClass("active");
             }
         },
         {
-            id: 'probe', icon: 'icons/probe.svg', disabled: true,
+            id: 'probe', icon: 'icons/probe.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('probe');
                 $("#probe").addClass("active");
             }
         },
         {
-            id: 'arrow', icon: 'icons/arrow.svg', disabled: true,
+            id: 'arrow', icon: 'icons/arrow.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('arrow');
                 $("#arrow").addClass("active");
             }
         },
         {
-            id: 'seed', icon: 'icons/seed.svg', disabled: true,
+            id: 'seed', icon: 'icons/seed.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
+                if(!element.Drawings) { 
+                    element.showDrawings(true);
+                    $("#hide").removeClass('active')
+                }
                 if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
                 element.setTool('seed');
                 $("#seed").addClass("active");
@@ -215,36 +253,36 @@ var toolgroups = [
     [
         {
             headIcon: 'icons/RMB.svg',
-            id: 'zoom', icon: 'icons/zoom.svg', disabled: true,
+            id: 'zoom', icon: 'icons/zoom.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.RMBTool != '') $("#"+element.RMBTool).removeClass("active");
                 element.setTool('zoom');
                 $("#zoom").addClass("active");
             }
         },
         {
-            id: 'magnify', icon: 'icons/magnify.svg', disabled: true,
+            id: 'magnify', icon: 'icons/magnify.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.RMBTool != '') $("#"+element.RMBTool).removeClass("active");
                 element.setTool('magnify');
                 $("#magnify").addClass("active");
             }
         },
         {
-            id: 'pan', icon: 'icons/pan.svg', disabled: true,
+            id: 'pan', icon: 'icons/pan.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.RMBTool != '') $("#"+element.RMBTool).removeClass("active");
                 element.setTool('pan');
                 $("#pan").addClass("active");
             }
         },
         {
-            id: 'rotate', icon: 'icons/rotate.svg', disabled: true,
+            id: 'rotate', icon: 'icons/rotate.svg',
             click: function(e){
-                const element = getActiveElement(elements);
+                const element = viewer.getActiveElement();
                 if(element.RMBTool != '') $("#"+element.RMBTool).removeClass("active");
                 element.setTool('rotate');
                 $("#rotate").addClass("active");
@@ -252,81 +290,18 @@ var toolgroups = [
         }
     ]
 ];
-var elements = {active: 0, data: []};
+const viewer = new Viewer(toolgroups);
+
 $(document).ready(() => {
     $('#file').on("change", function(e){
         const file = e.target.files[0];
-        //createNewElement(openFile(file));
-        getActiveElement(elements).setNewImage(openFile(file));
+        viewer.loadFile(viewer.active, file);
     });
     setCornerstoneConfig();    
     cornerstone.metaData.addProvider(metaDataProvider);
-    loadTools(toolgroups);
-    createNewElement('example://1');
+    viewer.loadFileByImageId(viewer.active, 'example://1');
 });
 
-function loadTools(toolgroups) {
-    if(tools.length==0){
-        console.warn('No element with id "tools". Unable to load tools!');
-        return;
-    }
-    toolgroups.forEach((group, i) => {
-        $("#tools").append('<div id="toolbar'+i+'" class="toolbar"></div>');
-        group.forEach((tool,j) => {
-            if(tool.headIcon) $("#toolbar"+i).append('<img class="icon" src="'+tool.headIcon+'">');
-            if(tool.disabled) $("#toolbar"+i).append('<button id="'+tool.id+'" class="btn disabled" disabled><img class="icon" src="'+tool.icon+'"></button>');
-            else $("#toolbar"+i).append('<button id="'+tool.id+'" class="btn"><img class="icon" src="'+tool.icon+'"></button>');
-            $("#"+tool.id).click(tool.click);
-        })
-    });
-    
-}
-function switchTool(id){
-    var button = $("#"+id);
-    if(button.length>0) {
-        var tmp = toolgroups.filter(group => group.filter(tool => tool.id == id).length>0)[0];
-        tmp = tmp.filter(tool => tool.id == id)[0];
-        
-        if(button.is(':disabled')) {
-            button.prop('disabled', false);
-            button.removeClass('disabled');
-            tmp.disabled = false;
-        }
-        else {
-            button.prop('disabled', true);
-            button.addClass('disabled');
-            tmp.disabled = true;
-        }
-    }
-}
-function createNewElement(imageId){
-    toolgroups.forEach(group => group.forEach(tool => {if(tool.disabled) switchTool(tool.id)}));
-    var id = elements.data.length;
-    $("#images").append('<div id="image'+id+'" class="image-element" style="width:100%;height:100%;display:block;"></div>');
-    elements.data.push(new DICOMImage($("#image"+id)[0], imageId));
-}
-function getActiveElement(elements){
-    return elements.data[elements.active];
-}
-function openFile(file){
-    return cornerstoneWADOImageLoader.wadouri.fileManager.add(file);
-}
-function setElementTools(element){
-    toolgroups.forEach((group, i) => {
-        group.forEach(tool => {
-            $("#"+tool.id).removeClass('active');
-            if(i==2){
-                if(tool.id == "markers" && element.Orientation) $("#"+tool.id).addClass('active');
-                else if(tool.id == "scale" && element.Scale) $("#"+tool.id).addClass('active');
-                else if(tool.id == "hide" && !element.Drawings) $("#"+tool.id).addClass('active');
-                else if(tool.id == "hide-meta" && element.Meta) $("#"+tool.id).addClass('active');
-            }            
-            if(i==3) if(tool.id == element.LMBTool) $("#"+tool.id).addClass('active');
-
-            if(i==4) if(tool.id == element.RMBTool) $("#"+tool.id).addClass('active');
-        });
-    });
-}
 function metaDataProvider(type, imageId){
     if(type === 'imagePlaneModule') {
         const element = getActiveElement(elements);
