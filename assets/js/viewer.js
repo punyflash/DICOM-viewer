@@ -14,6 +14,7 @@ class Viewer {
             })
         });
         this.createElement();
+        this._events();
     }
     createElement(){
         const id = this.elements.length;
@@ -89,6 +90,80 @@ class Viewer {
             this.DoubleView = false;
         }
     }
+    openSettings(){
+        let element = this.getActiveElement();
+        let modal = $("#modal-content");
+        var data = {
+            pixelSpacing: element.MetaChanger.pixelSpacing || element.metaData.string('x00280030') || element.metaData.string('x00181164') || element.metaData.string('x00182010'),
+            orientationPatient: element.MetaChanger.orientationPatient || element.metaData.string('x00200037'),
+            positionPatient: element.MetaChanger.positionPatient || element.metaData.string('x00200032')
+        }
+        if(data.pixelSpacing){
+            data.pixelSpacing = data.pixelSpacing.split("\\");
+            data.pixelSpacing.forEach((e,i) => data.pixelSpacing[i] = parseFloat(e));
+        } else data.pixelSpacing = [0, 0];
+        if(data.orientationPatient){
+            data.orientationPatient = data.orientationPatient.split("\\");
+            data.orientationPatient.forEach((e,i) => data.orientationPatient[i] = parseFloat(e));
+        } else data.orientationPatient = [0, 0, 0, 0, 0, 0];
+        if(data.positionPatient){
+            data.positionPatient = data.positionPatient.split("\\");
+            data.positionPatient.forEach((e,i) => data.positionPatient[i] = parseFloat(e));
+        } else data.positionPatient = [0, 0, 0];
+
+        modal.html('<table class="settings-table">'+
+                    '<tr><th>Setting</th><th>Value</th></tr>'+
+                    '<tr><td>Pixel Spacing</td><td>'+
+                        '<label>x: </label><input id="ps-X" min="0.001" step="0.001" type="number" style="width: 12.35em" placeholder="'+data.pixelSpacing[0]+'">'+
+                        '<label> y: </label><input id="ps-Y" min="0.001" step="0.001" type="number" style="width: 12.35em" placeholder="'+data.pixelSpacing[1]+'"></td></tr>'+
+                    '<tr><td>Image Orientation (Patient) - Row cossines</td><td>'+
+                        '<label>x (R/L): </label><input id="io-R-X" min="-1" max="1" step="0.01" type="number" style="width: 4em" placeholder="'+data.orientationPatient[0]+'">'+
+                        '<label> y (A/P): </label><input id="io-R-Y" min="-1" max="1" step="0.01" type="number" style="width: 4em" placeholder="'+data.orientationPatient[1]+'">'+
+                        '<label> z (F/H): </label><input id="io-R-Z" min="-1" max="1" step="0.01" type="number" style="width: 4em" placeholder="'+data.orientationPatient[2]+'"></td></tr>'+
+                    '<tr><td>Image Orientation (Patient) - Column cossines</td><td>'+
+                        '<label>x (R/L): </label><input id="io-C-X" min="-1" max="1" step="0.01" type="number" style="width: 4em" placeholder="'+data.orientationPatient[3]+'">'+
+                        '<label> y (A/P): </label><input id="io-C-Y" min="-1" max="1" step="0.01" type="number" style="width: 4em" placeholder="'+data.orientationPatient[4]+'">'+
+                        '<label> z (F/H): </label><input id="io-C-Z" min="-1" max="1" step="0.01" type="number" style="width: 4em" placeholder="'+data.orientationPatient[5]+'"></td></tr>'+
+                    '<tr><td>Image Posiiton (Patient)</td><td>'+
+                        '<label>x: </label><input id="ip-X" step="0.01" type="number" style="width: 7.45em" placeholder="'+data.positionPatient[0]+'">'+
+                        '<label> y: </label><input id="ip-Y" step="0.01" type="number" style="width: 7.45em" placeholder="'+data.positionPatient[1]+'">'+
+                        '<label> z: </label><input id="ip-Z" step="0.01" type="number" style="width: 7.45em" placeholder="'+data.positionPatient[2]+'"></td></tr></table>');
+        modal.append(function(){
+            return $('<button class="btn" style="float:right;padding:13px;margin:13px;">Apply</button>').click(function(){
+                if($("#ps-X").val()!='') data.pixelSpacing[0] = parseFloat($("#ps-X").val());
+                if($("#ps-Y").val()!='') data.pixelSpacing[1] = parseFloat($("#ps-Y").val());
+                if($("#io-R-X").val()!='') data.orientationPatient[0] = parseFloat($("#io-R-X").val());
+                if($("#io-R-Y").val()!='') data.orientationPatient[1] = parseFloat($("#io-R-Y").val());
+                if($("#io-R-Z").val()!='') data.orientationPatient[2] = parseFloat($("#io-R-Z").val());
+                if($("#io-C-X").val()!='') data.orientationPatient[3] = parseFloat($("#io-C-X").val());
+                if($("#io-C-Y").val()!='') data.orientationPatient[4] = parseFloat($("#io-C-Y").val());
+                if($("#io-C-Z").val()!='') data.orientationPatient[5] = parseFloat($("#io-C-Z").val());        
+                if($("#ip-X").val()!='') data.positionPatient[0] = parseFloat($("#ip-X").val());
+                if($("#ip-Y").val()!='') data.positionPatient[1] = parseFloat($("#ip-Y").val());
+                if($("#ip-Z").val()!='') data.positionPatient[2] = parseFloat($("#ip-Z").val());
+                
+                element.MetaChanger.pixelSpacing = data.pixelSpacing[0] + "\\" + data.pixelSpacing[1];
+                element.MetaChanger.orientationPatient = data.orientationPatient[0] + "\\" + data.orientationPatient[1] + "\\" + data.orientationPatient[2] + "\\" + data.orientationPatient[3] + "\\" + data.orientationPatient[4] + "\\" + data.orientationPatient[5];
+                element.MetaChanger.positionPatient = data.positionPatient[0] + "\\" + data.positionPatient[1] + "\\" + data.positionPatient[2];
+
+                $("#modal")[0].style.display = "none";
+                $("#modal-content")[0].innerHTML = "";
+                cornerstone.updateImage(element.element);                
+            });
+        });
+        modal.append(function(){
+            return $('<button class="btn" style="float:right;padding:13px;margin:13px;">Set Default</button>').click(function(){
+                element.MetaChanger.pixelSpacing = undefined;
+                element.MetaChanger.orientationPatient = undefined;
+                element.MetaChanger.positionPatient = undefined;
+                
+                $("#modal")[0].style.display = "none";
+                $("#modal-content")[0].innerHTML = "";
+                cornerstone.updateImage(element.element);    
+            });
+        })
+        this._displayModal();
+    }
     _updateTools(){
         const element = this.getActiveElement();
         this.toolgroups.forEach((group, i) => {
@@ -118,6 +193,30 @@ class Viewer {
             });
         });
     }
+    _displayModal(){
+        $("#modal")[0].style.display = 'block'
+    }
+    _events(){
+        window.addEventListener('click', function(e){
+            var modal = $("#modal")[0];
+            var content = $("#modal-content")[0];
+            if (e.target == modal) {
+                modal.style.display = "none";
+                content.innerHTML = "";
+            }
+        });
+        document.getElementsByClassName("close")[0].addEventListener('click', function(e) {
+            $("#modal")[0].style.display = "none";
+            $("#modal-content")[0].innerHTML = "";
+        });
+        $('#file').on('click touchstart', function(){
+            $(this).val('');
+        });
+        $('#file').on("change", function(e){
+            const file = e.target.files[0];
+            viewer.loadFile(viewer.active, file);
+        }); 
+    }
 }
 class DICOMImage {
     constructor(element, imageId){
@@ -128,7 +227,6 @@ class DICOMImage {
     setNewImage(imageId){
         var element = this.element;
         try { this.destroy() } catch { }
-        cornerstone.metaData.addProvider(this._metaDataProvider);
         this.imageId = imageId;
         this.Orientation = false;
         this.Drawings = true;
@@ -148,6 +246,7 @@ class DICOMImage {
             cornerstone.displayImage(element, image);
             this._enableTools(element);
         });
+        cornerstone.metaData.addProvider(this._metaDataProvider);
     }
     destroy(){
         cornerstone.disable(this.element);
@@ -463,58 +562,51 @@ class DICOMImage {
         }
     }
     _metaDataProvider(type, imageId){
-        if(type === 'imagePlaneModule') {
-            const element = this;
-            if(imageId === element.imageId){
-                if(element.metaData){
-                    const imageData = element.metaData;
-                    const metaData = element.MetaChanger;
-                    var pixelSpacing = metaData.pixelSpacing || imageData.string('x00280030') || imageData.string('x00181164') || imageData.string('x00182010');
-                    if(pixelSpacing){
-                        pixelSpacing = pixelSpacing.split('\\');
-                        pixelSpacing.forEach((e, i) => pixelSpacing[i] = parseFloat(e));
-                        var rowPixelSpacing = pixelSpacing[0];
-                        var columnPixelSpacing = pixelSpacing[1];
-                    }
+        if(type === 'imagePlaneModule' && imageId === this.imageId) {
+            var pixelSpacing = this.MetaChanger.pixelSpacing || this.metaData.string('x00280030') || this.metaData.string('x00181164') || this.metaData.string('x00182010');
+            if(pixelSpacing){
+                pixelSpacing = pixelSpacing.split('\\');
+                pixelSpacing.forEach((e, i) => pixelSpacing[i] = parseFloat(e));
+                var rowPixelSpacing = pixelSpacing[0];
+                var columnPixelSpacing = pixelSpacing[1];
+            }
+            
+            var orientationPatient = this.MetaChanger.orientationPatient || this.metaData.string('x00200037');
+            var rowCosines = undefined;
+            var columnCosines = undefined;
+            if(orientationPatient){
+                orientationPatient = orientationPatient.split('\\');
+                orientationPatient.forEach((e, i) => orientationPatient[i] = parseFloat(e));
     
-                    var orientationPatient = metaData.orientationPatient || imageData.string('x00200037');
-                    var rowCosines = undefined;
-                    var columnCosines = undefined;
-                    if(orientationPatient){
-                        orientationPatient = orientationPatient.split('\\');
-                        orientationPatient.forEach((e, i) => orientationPatient[i] = parseFloat(e));
+                rowCosines = [orientationPatient[0], orientationPatient[1], orientationPatient[2]];
+                columnCosines = [orientationPatient[3], orientationPatient[4], orientationPatient[5]];
+            }
     
-                        rowCosines = [orientationPatient[0], orientationPatient[1], orientationPatient[2]];
-                        columnCosines = [orientationPatient[3], orientationPatient[4], orientationPatient[5]];
-                    }
+            var positionPatient = this.MetaChanger.positionPatient || this.metaData.string('x00200032');
+            if(positionPatient){
+                positionPatient = positionPatient.split('\\');
+                positionPatient.forEach((e, i) => positionPatient[i] = parseFloat(e));
+            }
     
-                    var positionPatient = metaData.positionPatient || imageData.string('x00200032');
-                    if(positionPatient){
-                        positionPatient = positionPatient.split('\\');
-                        positionPatient.forEach((e, i) => positionPatient[i] = parseFloat(e));
-                    }
+            var sliceThickness = this.metaData.string('x00180050');
+            if(sliceThickness) sliceThickness = parseFloat(sliceThickness);
     
-                    var sliceThickness = metaData.sliceThickness || imageData.string('x00180050');
-                    if(sliceThickness) sliceThickness = parseFloat(sliceThickness);
+            var sliceLocation = this.metaData.string('x00201041');
+            if(sliceLocation) sliceLocation = parseFloat(sliceLocation);
     
-                    var sliceLocation = metaData.sliceLocation || imageData.string('x00201041');
-                    if(sliceLocation) sliceLocation = parseFloat(sliceLocation);
-    
-                    return {
-                        frameOfReferenceUID: imageData.string('x00200052') || null,
-                        rows: imageData.int16('x00280010') || null,
-                        columns: imageData.int16('x00280011') || null,
-                        imageOrientationPatient: orientationPatient || null,
-                        rowCosines: rowCosines || null,
-                        columnCosines: columnCosines || null,
-                        imagePositionPatient: positionPatient || null,
-                        sliceThickness: sliceThickness || null,
-                        sliceLocation: sliceLocation || null,
-                        pixelSpacing: pixelSpacing || null,
-                        rowPixelSpacing: rowPixelSpacing || null,
-                        columnPixelSpacing: columnPixelSpacing || null
-                    }
-                }
+            return {
+                frameOfReferenceUID: "some data" || this.metaData.string('x00200052') || null,
+                rows: this.metaData.int16('x00280010') || null,
+                columns: this.metaData.int16('x00280011') || null,
+                imageOrientationPatient: orientationPatient || null,
+                rowCosines: rowCosines || null,
+                columnCosines: columnCosines || null,
+                imagePositionPatient: positionPatient || null,
+                sliceThickness: sliceThickness || null,
+                sliceLocation: sliceLocation || null,
+                pixelSpacing: pixelSpacing || null,
+                rowPixelSpacing: rowPixelSpacing || null,
+                columnPixelSpacing: columnPixelSpacing || null
             }
         }
     }   
@@ -602,7 +694,7 @@ $(document).ready(() => {
             {
                 id: 'settings', icon: 'icons/settings.svg',
                 click: function(e){
-                    //TODO: 
+                    viewer.openSettings();
                 }
             }
         ],
@@ -860,11 +952,4 @@ $(document).ready(() => {
         ]
     ];
     viewer = new Viewer(toolgroups);
-    $('#file').on('click touchstart', function(){
-        $(this).val('');
-    });
-    $('#file').on("change", function(e){
-        const file = e.target.files[0];
-        viewer.loadFile(viewer.active, file);
-    }); 
 });
