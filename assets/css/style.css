@@ -37,10 +37,12 @@ body {
     position: relative;
     margin: -1px;
     border: 1px solid #18BEE0;
-    border-left: 1px solid blue;
+    z-index: 1;
 }
 .image-active {
-    border: 1px solid blue;
+    margin: -2px;
+    border: 2px solid blue;
+    z-index: 2;
 }
 .overlay {
     padding: 10px;
@@ -146,6 +148,7 @@ body {
     position: absolute;
     background: white;
     border: 1px solid grey;
+    z-index: 3;
 }
 .context-child {
     cursor: default;

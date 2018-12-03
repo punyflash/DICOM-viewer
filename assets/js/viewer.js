@@ -1,6 +1,7 @@
 var viewer;
 
 $(document).ready(() => {
+    setCornerstoneConfig();
     var toolgroups = [
         [
             {   
@@ -300,9 +301,8 @@ $(document).ready(() => {
             }
         ]
     ];
+    
     viewer = new Viewer(toolgroups);
-    setCornerstoneConfig();
-    viewer.loadFileByImageId(viewer.active, 'example://1');
     
     $('#file').on("change", function(e){
         const file = e.target.files[0];
