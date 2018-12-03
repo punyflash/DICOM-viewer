@@ -5,6 +5,9 @@
   "main": "index.js",
   "author": "PunyFlash <puny.flash@gmail.com>",
   "license": "MIT",
+  "scripts": {
+    "start": "node ./index.js"
+  },
   "dependencies": {
     "cornerstone-core": "^2.2.7",
     "cornerstone-math": "^0.1.6",

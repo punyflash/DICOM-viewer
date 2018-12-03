@@ -91,6 +91,7 @@ class Viewer {
         this.elements = [];
         this.toolgroups = toolgroups;
         this.active = 0;
+        this.DoubleView = false;
 
         toolgroups.forEach((group, i) => {
             $("#tools").append('<div id="toolbar'+i+'" class="toolbar"></div>');
@@ -105,59 +106,71 @@ class Viewer {
     createElement(){
         const id = this.elements.length;
         $("#images").append('<div id="image'+id+'" class="image-element"></div>');
+        const _this = this;
+        $("#image"+id).bind('click contextmenu', function(e){
+            _this.setActiveElement(id);
+        });
         this.elements.push({element: undefined, image: $("#image"+id)});
         this.elements.forEach(e => {
-            if(id>1) e.image[0].style = "width:50%;height:100%;display:inline-block;";
+            if(id>0) e.image[0].style = "width:50%;height:100%;display:inline-block;";
             else e.image[0].style = "width:100%;height:100%;display:inline-block;";
             if(e.element) cornerstone.resize(e.element.element);
         })
-        return this.elements.length;
+        this.setActiveElement(id);
+        return id;        
     }
     destroyLastElement(){
         const id = this.elements.length-1;
+        if(id<0) return;
         if(this.elements[id].element) this.elements[id].element.destroy();
         this.elements[id].image.remove();
+        this.elements.pop();
         this.elements.forEach(e => {
             if(id>1) e.image[0].style = "width:50%;height:100%;display:inline-block;";
             else e.image[0].style = "width:100%;height:100%;display:inline-block;";
             if(e.element) cornerstone.resize(e.element.element);
-        })
+        });
+        this.setActiveElement(id-1);
     }
     loadFile(into, file){ 
         const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(file);
         this.loadFileByImageId(into, imageId);
+        this.setActiveElement(into);
     }
     loadFileByImageId(into, imageId){
         if(!this.elements[into]) return;
-        this.elements[into].element = new DICOMImage($("#image"+this.elements[into].image)[0], imageId);
+        this.elements[into].element = new DICOMImage(this.elements[into].image[0], imageId);
         this.setActiveElement(into);
     }
     setActiveElement(id){
-        if(id > this.elements.length) return;
-        this.elements[this.active].element
+        if(id > this.elements.length || id<0) return;
         this.active = id;
         const element = this.elements[id].element;
 
-        toolgroups.forEach((group, i) => {
+        this.toolgroups.forEach((group, i) => {
             group.forEach(tool => {
                 $("#"+tool.id).removeClass('active');
                 $("#"+tool.id).removeClass('disabled');
                 $("#"+tool.id).prop('disabled', false);
 
-                if(!element && (tool.id != "home" || tool.id != "connect")){
+                if(!element && tool.id != "home" && tool.id != "connect" && tool.id != "open" && tool.id != "double-view"){
                     $("#"+tool.id).prop('disabled', true);
                     $("#"+tool.id).addClass('disabled');
-                    continue;
                 }
-                if(i==2){
-                    if(element && tool.id == "markers" && element.Orientation) $("#"+tool.id).addClass('active');
-                    else if(element && tool.id == "scale" && element.Scale) $("#"+tool.id).addClass('active');
-                    else if(element && tool.id == "hide" && !element.Drawings) $("#"+tool.id).addClass('active');
-                    else if(element && tool.id == "hide-meta" && !element.Meta) $("#"+tool.id).addClass('active');
-                }            
-                if(i==3) if(element && tool.id == element.LMBTool) $("#"+tool.id).addClass('active');
-    
-                if(i==4) if(element && tool.id == element.RMBTool) $("#"+tool.id).addClass('active');
+                else {
+                    if(i==0){
+                        if(tool.id == "double-view" && this.DoubleView) $("#"+tool.id).addClass('active')
+                    }
+                    if(i==2){
+                        if(element && tool.id == "markers" && element.Orientation) $("#"+tool.id).addClass('active');
+                        else if(element && tool.id == "scale" && element.Scale) $("#"+tool.id).addClass('active');
+                        else if(element && tool.id == "hide" && !element.Drawings) $("#"+tool.id).addClass('active');
+                        else if(element && tool.id == "hide-meta" && !element.Meta) $("#"+tool.id).addClass('active');
+                    }            
+                    if(i==3) if(element && tool.id == element.LMBTool) $("#"+tool.id).addClass('active');
+        
+                    if(i==4) if(element && tool.id == element.RMBTool) $("#"+tool.id).addClass('active');
+                }
             });
         });
 
@@ -172,6 +185,16 @@ class Viewer {
     getActiveElement(){
         return this.elements[this.active].element;
     }
+    doubleView(value){
+        if(value){
+            this.createElement();
+            this.DoubleView = true;
+        }
+        else {
+            this.destroyLastElement();
+            this.DoubleView = false;
+        }
+    }
 }
 
 class DICOMImage {
@@ -182,7 +205,8 @@ class DICOMImage {
 
     setNewImage(imageId){
         var element = this.element;
-        try {this.destroy()}catch {}
+        try { this.destroy() } catch { }
+        cornerstone.metaData.addProvider(this._metaDataProvider);
         this.imageId = imageId;
         this.Orientation = false;
         this.Drawings = true;
@@ -205,6 +229,7 @@ class DICOMImage {
     }
     destroy(){
         cornerstone.disable(this.element);
+        cornerstone.metaData.removeProvider(this._metaDataProvider);
         this.element.innerHTML = '';
     }
     showOrientation(value){
@@ -312,6 +337,16 @@ class DICOMImage {
                 this.RMBTool = 'pan';
                 cornerstoneTools.pan.activate(this.element, 4);
                 break;
+        }
+    }
+    active(value){
+        if(value){
+            if(this.LMBTool!='') this.setTool(this.LMBTool);
+            if(this.RMBTool!='') this.setTool(this.RMBTool);
+        }
+        else {
+            this._unsetLMBTool();
+            this._unsetRMBTool();
         }
     }
     
@@ -505,8 +540,64 @@ class DICOMImage {
             this.Loading = false;
         }
     }
+    _metaDataProvider(type, imageId){
+        if(type === 'imagePlaneModule') {
+            const element = this;
+            if(imageId === element.imageId){
+                if(element.metaData){
+                    const imageData = element.metaData;
+                    const metaData = element.MetaChanger;
+                    var pixelSpacing = metaData.pixelSpacing || imageData.string('x00280030') || imageData.string('x00181164') || imageData.string('x00182010');
+                    if(pixelSpacing){
+                        pixelSpacing = pixelSpacing.split('\\');
+                        pixelSpacing.forEach((e, i) => pixelSpacing[i] = parseFloat(e));
+                        var rowPixelSpacing = pixelSpacing[0];
+                        var columnPixelSpacing = pixelSpacing[1];
+                    }
+    
+                    var orientationPatient = metaData.orientationPatient || imageData.string('x00200037');
+                    var rowCosines = undefined;
+                    var columnCosines = undefined;
+                    if(orientationPatient){
+                        orientationPatient = orientationPatient.split('\\');
+                        orientationPatient.forEach((e, i) => orientationPatient[i] = parseFloat(e));
+    
+                        rowCosines = [orientationPatient[0], orientationPatient[1], orientationPatient[2]];
+                        columnCosines = [orientationPatient[3], orientationPatient[4], orientationPatient[5]];
+                    }
+    
+                    var positionPatient = metaData.positionPatient || imageData.string('x00200032');
+                    if(positionPatient){
+                        positionPatient = positionPatient.split('\\');
+                        positionPatient.forEach((e, i) => positionPatient[i] = parseFloat(e));
+                    }
+    
+                    var sliceThickness = metaData.sliceThickness || imageData.string('x00180050');
+                    if(sliceThickness) sliceThickness = parseFloat(sliceThickness);
+    
+                    var sliceLocation = metaData.sliceLocation || imageData.string('x00201041');
+                    if(sliceLocation) sliceLocation = parseFloat(sliceLocation);
+    
+                    return {
+                        frameOfReferenceUID: imageData.string('x00200052') || null,
+                        rows: imageData.int16('x00280010') || null,
+                        columns: imageData.int16('x00280011') || null,
+                        imageOrientationPatient: orientationPatient || null,
+                        rowCosines: rowCosines || null,
+                        columnCosines: columnCosines || null,
+                        imagePositionPatient: positionPatient || null,
+                        sliceThickness: sliceThickness || null,
+                        sliceLocation: sliceLocation || null,
+                        pixelSpacing: pixelSpacing || null,
+                        rowPixelSpacing: rowPixelSpacing || null,
+                        columnPixelSpacing: columnPixelSpacing || null
+                    }
+                }
+            }
+        }
+    }   
 }
-  function setCornerstoneConfig(){
+function setCornerstoneConfig(){
     cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
     cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
     cornerstoneTools.external.cornerstone = cornerstone;

@@ -37,6 +37,7 @@ body {
     position: relative;
     margin: -1px;
     border: 1px solid #18BEE0;
+    border-left: 1px solid blue;
 }
 .image-active {
     border: 1px solid blue;
