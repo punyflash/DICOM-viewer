@@ -164,6 +164,255 @@ class Viewer {
         })
         this._displayModal();
     }
+    openStudies(){
+        $("#modal-content").html('<div class="lds-dual-ring"></div>');
+        this._displayModal();
+        if(this.study) this._fetchInstances();
+        else this._fetchStudies();
+    }
+    loadStudie(studyID, patientId){
+        this.study = studyID;
+        this.patient = patientId;
+    }
+
+    _fetchStudies(){
+        let modal = $("#modal-content");
+        if(!this.client){
+            $.get('/config/server.json', data => {
+                const serverConfig = {
+                    url: data.serverURL,
+                    username: data.login,
+                    password: data.password,
+                    qidoURLPrefix: data.qidoRoot,
+                    wadoURLPrefix: data.wadoRoot,
+                    stowURLPrefix: data.stowRoot
+                };
+                this.client = new dicomWebClient.api.DICOMwebClient(serverConfig);
+                this.client.searchForStudies()
+                .then(data => {
+                    this._tabulateStudies(modal, data);
+                })
+                .catch(error => {
+                    this.client = undefined;
+                    modal.html('<div class="warning" id="errormessage">'+error+'</div>');
+                    return;
+                });
+            })
+        } else  {
+            this.client.searchForStudies()
+            .then(data => {
+                this._tabulateStudies(modal, data);
+            })
+            .catch(error => {
+                this.client = undefined;
+                modal.html('<div class="warning" id="errormessage">'+error+'</div>');
+                return;
+            });
+        }
+    }
+    _fetchInstances(){
+        let modal = $("#modal-content");
+        if(!this.client){
+            $.get('/config/server.json', data => {
+                const serverConfig = {
+                    url: data.serverURL,
+                    username: data.login,
+                    password: data.password,
+                    qidoURLPrefix: data.qidoRoot,
+                    wadoURLPrefix: data.wadoRoot,
+                    stowURLPrefix: data.stowRoot
+                };
+                this.client = new dicomWebClient.api.DICOMwebClient(serverConfig);
+                this.client.searchForInstances({studyInstanceUID: this.study})
+                    .then(data => {
+                        this._tabulateInstances(modal, data);
+                    })
+                    .catch(error => {
+                        this.client = undefined;
+                        modal.html('<div class="warning" id="errormessage">'+error+'</div>');
+                        return;
+                    });
+            })
+        } else  {
+            this.client.searchForInstances({studyInstanceUID: this.study})
+                .then(data => {
+                    this._tabulateInstances(modal, data);
+                })
+                .catch(error => {
+                    this.client = undefined;
+                    modal.html('<div class="warning" id="errormessage">'+error+'</div>');
+                    return;
+                });
+        }
+    }
+    _tabulateStudies(source, studies){
+        source.html('<h3>Studies</h3>');
+        source.append(
+            '<span>'+
+                '<label>Field: </label><select id="filter-field">'+
+                    '<option></option>'+
+                    '<option value="name">Name</option>'+
+                    '<option value="date">Study Date</option>'+
+                    '<option value="birthday">Date Of Birth</option>'+
+                    '<option value="sex">Sex</option><option value="patient_id">Patient ID</option>'+
+                    '<option value="modality">Modality</option><option value="accession">Accession Number</option>'+
+                    '<option value="physician">Referring Physician</option></select></span><span>'+
+                '<label> Type: </label><select id="filter-type">'+
+                    '<option value="=">=</option>'+
+                    '<option value="<">&lt;</option>'+
+                    '<option value="<=">&lt;=</option>'+
+                    '<option value=">">&gt;</option>'+
+                    '<option value=">=">&gt;=</option>'+
+                    '<option value="!=">!=</option>'+
+                    '<option value="like">like</option></select></span><span>'+
+                '<label> Value: </label><input id="filter-value" type="text" placeholder="value to filter"></span>'+
+                '<button id="filter-clear" class="btn" style="margin-left: 10px;">Clear Filter</button><p></p>');
+        source.append('<div id="studies-table"></div>');
+        var data = [];
+        studies.forEach((e,i) => {
+            var date, name, birthday, sex, patient_id, modality, accession, physician, series, instances;
+            if(e['00080020']) date = e['00080020'].Value[0];
+            if(e['00080030']) date += ' '+e['00080030'].Value[0];
+            if(e['00100010']) name = e['00100010'].Value[0].replace("^", " ").replace("_", " ").replace(";", " ").replace(".", " ").replace(",", " ");
+            if(e['00100030']) birthday = e['00100030'].Value[0];
+            if(e['00100040']) sex = e['00100040'].Value[0];
+            if(e['00100020']) patient_id = e['00100020'].Value[0];
+            if(e['00080061']) modality = e['00080061'].Value[0];
+            if(e['00080050']) accession = e['00080050'].Value[0];
+            if(e['00080090']) physician = e['00080090'].Value[0];
+            if(e['00201206']) series = e['00201206'].Value[0];
+            if(e['00201208']) instances =  e['00201208'].Value[0];
+            data.push({index: i, date, name, birthday, sex, patient_id, modality, accession, physician, series, instances});
+        })
+        const _this = this;
+        var table = new Tabulator("#studies-table", {
+            width: "100%",
+            height: "300px",
+             data: data,
+             layout: "fitColumns",
+             columns:[
+                {title:"Study Date", field:"date", sorter:"number", width:160},
+                {title:"Name", field:"name", width:180},
+                {title:"Date Of Birth", field:"birthday", sorter:"number", width:90},
+                {title:"Sex", field:"sex", width:20},
+                {title:"Patient ID", field:"patient_id", sorter:"number", width:50},
+                {title:"Modality", field:"modality", width:20},
+                {title:"Accession Number", field:"accession", width:140},
+                {title:"Referring Physician", field:"physician", width:130},
+                {title:"Series", field:"series", sorter:"number", width:20},
+                {title:"Instances", field:"instances", sorter:"number", width:20},
+             ],
+             rowClick:function(e, row){
+                var studyID = studies[row._row.data.index]['0020000D'].Value[0];
+                var patientID = studies[row._row.data.index]['00100020'].Value[0];
+                source.html('<div class="lds-dual-ring"></div>');
+                _this.loadStudie(studyID, patientID);
+                _this._fetchInstances();
+             },
+        });
+        $("#filter-field").change(updateFilter);
+        $("#filter-type").change(updateFilter);
+        $("#filter-value").keyup(updateFilter);
+        $("#filter-clear").click(event => {
+            $("#filter-field").val('');
+            $("#filter-type").val('=');
+            $("#filter-value").val('');
+            table.clearFilter();
+        })
+        function updateFilter(event){
+            table.setFilter($("#filter-field").val(), $("#filter-type").val(), $("#filter-value").val());
+        }
+    }
+    _tabulateInstances(source, instances){
+        if(this.patient) source.html('<h3>Instances (patient '+this.patient+')</h3>');
+        else source.html('<h3>Instances</h3>');
+        source.append(
+            '<span>'+
+                '<label>Field: </label><select id="filter-field">'+
+                    '<option></option>'+
+                    '<option value="series">Series</option>'+
+                    '<option value="instance">Instance</option>'+
+                    '<option value="description">Description</option>'+
+                    '<option value="character_set">Character Set</option>'+
+                    '<option value="modality">Moadlity</option>'+
+                    '<option value="rows">Rows</option>'+
+                    '<option value="columns">Columns</option>'+
+                    '<option value="bits">Bits/Pixel</option></select></span><span>'+
+                '<label> Type: </label><select id="filter-type">'+
+                    '<option value="=">=</option>'+
+                    '<option value="<">&lt;</option>'+
+                    '<option value="<=">&lt;=</option>'+
+                    '<option value=">">&gt;</option>'+
+                    '<option value=">=">&gt;=</option>'+
+                    '<option value="!=">!=</option>'+
+                    '<option value="like">like</option></select></span><span>'+
+                '<label> Value: </label><input id="filter-value" type="text" placeholder="value to filter"></span>'+
+                '<button id="filter-clear" class="btn" style="margin-left: 10px;">Clear Filter</button>'+
+                ' <button id="back-to-studies" class="btn" style="margin-left: 10px;">Back to studies</button><p></p>');
+        source.append('<div id="instances-table"></div>');
+        var data = [];
+        instances.forEach((e,i) => {
+            var description, character_set, modality, series, instance, rows, columns, bits;
+            if(e['0008103E']) description = e['0008103E'].Value[0];
+            if(e['00080005']) character_set = e['00080005'].Value[0];
+            if(e['00080060']) modality = e['00080060'].Value[0];
+            if(e['00200011']) series = e['00200011'].Value[0];
+            if(e['00200013']) instance = e['00200013'].Value[0];
+            if(e['00280010']) rows = e['00280010'].Value[0];
+            if(e['00280011']) columns = e['00280011'].Value[0];
+            if(e['00280100']) bits = e['00280100'].Value[0];
+            data.push({index: i, series, instance, description, character_set, modality, rows, columns, bits});
+        })
+        const _this = this;
+        var table = new Tabulator("#instances-table", {
+            width: "100%",
+            height: "300px",
+             data: data,
+             layout: "fitColumns",
+             columns:[
+                {title:"Series", field:"series", sorter:"number", width:40},
+                {title:"Instance", field:"instance", sorter:"number", width:40},
+                {title:"Description", field:"description", width:588},
+                {title:"Character Set", field:"character_set", width:100},
+                {title:"Moadlity", field:"modality", width:40},
+                {title:"Rows", field:"rows", sorter:"number", width:40},
+                {title:"Columns", field:"columns", sorter:"number", width:40},
+                {title:"Bits/Pixel", field:"bits", sorter:"number", width:40},
+             ],
+             rowClick: function(e, row){
+                const url = _this.client.buildInstanceWadoURIUrl({
+                    studyInstanceUID: instances[row._row.data.index]['0020000D'].Value[0],
+                    seriesInstanceUID: instances[row._row.data.index]['0020000E'].Value[0],
+                    sopInstanceUID: instances[row._row.data.index]['00080018'].Value[0]
+                });
+                _this._displayInstance(url);
+                $("#modal")[0].style.display = "none";
+                $("#modal-content")[0].innerHTML = "";
+            }
+        });
+        $("#filter-field").change(updateFilter);
+        $("#filter-type").change(updateFilter);
+        $("#filter-value").keyup(updateFilter);
+        $("#filter-clear").click(event => {
+            $("#filter-field").val('');
+            $("#filter-type").val('=');
+            $("#filter-value").val('');
+            table.clearFilter();
+        })
+        $("#back-to-studies").click(event => {
+            this.study = undefined;
+            this.openStudies();
+        })
+        function updateFilter(event){
+            table.setFilter($("#filter-field").val(), $("#filter-type").val(), $("#filter-value").val());
+        }
+
+    }
+    _displayInstance(url){        
+        fetch(url).then(res => res.blob()).then(blob => {
+            this.loadFile(this.active, blob);
+        });
+    }
     _updateTools(){
         const element = this.getActiveElement();
         this.toolgroups.forEach((group, i) => {
@@ -197,6 +446,7 @@ class Viewer {
         $("#modal")[0].style.display = 'block'
     }
     _events(){
+        const _this = this;
         window.addEventListener('click', function(e){
             var modal = $("#modal")[0];
             var content = $("#modal-content")[0];
@@ -214,7 +464,7 @@ class Viewer {
         });
         $('#file').on("change", function(e){
             const file = e.target.files[0];
-            viewer.loadFile(viewer.active, file);
+            _this.loadFile(_this.active, file);
         }); 
     }
 }
@@ -236,6 +486,7 @@ class DICOMImage {
         this.stack = {currentImageIdIndex : 0 ,imageIds: [], id: ''};
         this.LMBTool = '';
         this.RMBTool = '';
+        this.Active = true;
 
         cornerstone.enable(element);
         this._createMetaHandles(element.id);
@@ -246,12 +497,22 @@ class DICOMImage {
             cornerstone.displayImage(element, image);
             this._enableTools(element);
         });
-        cornerstone.metaData.addProvider(this._metaDataProvider);
+        cornerstone.metaData.addProvider(metaDataProvider);
+
+        const _this = this;
+        function metaDataProvider(type, imageId){
+            return _this._metaDataProvider(type, imageId);
+        }
     }
     destroy(){
         cornerstone.disable(this.element);
-        cornerstone.metaData.removeProvider(this._metaDataProvider);
+        cornerstone.metaData.removeProvider(metaDataProvider);
         this.element.innerHTML = '';
+
+        const _this = this;
+        function metaDataProvider(type, imageId){
+            return _this._metaDataProvider(type, imageId);
+        }
     }
     showOrientation(value){
         this.Orientation = value;
@@ -364,10 +625,12 @@ class DICOMImage {
         if(value){
             if(this.LMBTool!='') this.setTool(this.LMBTool);
             if(this.RMBTool!='') this.setTool(this.RMBTool);
+            this.Active = true;
         }
         else {
             if(this.LMBTool!='') this._unsetLMBTool();
             if(this.RMBTool!='') this._unsetRMBTool();
+            this.Active = false;
         }
     }
     
@@ -519,6 +782,7 @@ class DICOMImage {
         }
     }
     _contextMenu(event) {
+        if(!this.Active) return;
         this._deleteAllMenus();
         const supportedTools = ['length', 'ellipticalRoi', 'rectangleRoi', 'simpleAngle', 'probe', 'arrowAnnotate', 'seedAnnotate'];
         const pixelCoords = {x: event.offsetX, y: event.offsetY};
@@ -562,8 +826,8 @@ class DICOMImage {
         }
     }
     _metaDataProvider(type, imageId){
-        if(type === 'imagePlaneModule' && imageId === this.imageId) {
-            var pixelSpacing = this.MetaChanger.pixelSpacing || this.metaData.string('x00280030') || this.metaData.string('x00181164') || this.metaData.string('x00182010');
+        if(type === 'imagePlaneModule' && imageId === this.imageId && this.metaData) {
+            var pixelSpacing = this.MetaChanger.pixelSpacing || this.metaData.string('x00280030') || this.metaData.string('x00181164') || this.metaData.string('x00182010') || undefined;
             if(pixelSpacing){
                 pixelSpacing = pixelSpacing.split('\\');
                 pixelSpacing.forEach((e, i) => pixelSpacing[i] = parseFloat(e));
@@ -571,7 +835,7 @@ class DICOMImage {
                 var columnPixelSpacing = pixelSpacing[1];
             }
             
-            var orientationPatient = this.MetaChanger.orientationPatient || this.metaData.string('x00200037');
+            var orientationPatient = this.MetaChanger.orientationPatient || this.metaData.string('x00200037') || undefined;
             var rowCosines = undefined;
             var columnCosines = undefined;
             if(orientationPatient){
@@ -582,20 +846,20 @@ class DICOMImage {
                 columnCosines = [orientationPatient[3], orientationPatient[4], orientationPatient[5]];
             }
     
-            var positionPatient = this.MetaChanger.positionPatient || this.metaData.string('x00200032');
+            var positionPatient = this.MetaChanger.positionPatient || this.metaData.string('x00200032') || undefined;
             if(positionPatient){
                 positionPatient = positionPatient.split('\\');
                 positionPatient.forEach((e, i) => positionPatient[i] = parseFloat(e));
             }
     
-            var sliceThickness = this.metaData.string('x00180050');
+            var sliceThickness = this.metaData.string('x00180050') || undefined;
             if(sliceThickness) sliceThickness = parseFloat(sliceThickness);
     
-            var sliceLocation = this.metaData.string('x00201041');
+            var sliceLocation = this.metaData.string('x00201041') || undefined;
             if(sliceLocation) sliceLocation = parseFloat(sliceLocation);
     
             return {
-                frameOfReferenceUID: "some data" || this.metaData.string('x00200052') || null,
+                frameOfReferenceUID: this.metaData.string('x00200052') || null,
                 rows: this.metaData.int16('x00280010') || null,
                 columns: this.metaData.int16('x00280011') || null,
                 imageOrientationPatient: orientationPatient || null,
@@ -648,8 +912,6 @@ function setCornerstoneConfig(){
     });
 }
 
-
-let viewer;
 $(document).ready(() => {
     setCornerstoneConfig();
     var toolgroups = [
@@ -657,7 +919,7 @@ $(document).ready(() => {
             {   
                 id: 'home', icon: 'icons/home.svg',
                 click: function(e){
-                    window.location.replace(window.location.protocol+'//'+window.location.host);
+                    window.location.href = (window.location.protocol+'//'+window.location.host);
                 }
             },
             {
@@ -669,7 +931,7 @@ $(document).ready(() => {
             {
                 id: 'connect', icon: 'icons/connect.svg',
                 click: function(e){
-                    //TODO: 
+                    viewer.openStudies();
                 }
             },
             {
@@ -951,5 +1213,10 @@ $(document).ready(() => {
             }
         ]
     ];
-    viewer = new Viewer(toolgroups);
+    const viewer = new Viewer(toolgroups);
+    let study = window.location.pathname.replace("/", '');
+    if(study != 'viewer'){
+        viewer.loadStudie(study);
+        viewer.openStudies(study);
+    }
 });

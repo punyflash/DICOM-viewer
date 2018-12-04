@@ -6,3 +6,5 @@ const cornerstoneTools = require('cornerstone-tools/dist/cornerstoneTools.js');
 const cornerstoneWADOImageLoader = require('cornerstone-wado-image-loader/dist/cornerstoneWADOImageLoader.js');
 const dicomParser = require('dicom-parser');
 const dicomWebClient = require('dicomweb-client');
+const moment = require('moment');
+const Tabulator = require('tabulator-tables');

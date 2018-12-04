@@ -6,6 +6,7 @@
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+.vscode
 
 # Linux
 .directory
@@ -14,6 +15,7 @@ Desktop.ini
 
 # npm
 node_modules
+etc
 package-lock.json
 yarn.lock
 *.log
