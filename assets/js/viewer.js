@@ -3,7 +3,6 @@ class Viewer {
         this.elements = [];
         this.toolgroups = toolgroups;
         this.active = undefined;
-        this.DoubleView = false;
 
         toolgroups.forEach((group, i) => {
             $("#tools").append('<div id="toolbar'+i+'" class="toolbar"></div>');
@@ -14,6 +13,7 @@ class Viewer {
             })
         });
         this.createElement();
+        this._paginageElements('100%', '100%');
         this._events();
     }
     createElement(){
@@ -27,11 +27,6 @@ class Viewer {
             _this.setActiveElement(id);
         });
         this.elements.push({element: undefined, image: $("#image"+id)});
-        this.elements.forEach(e => {
-            if(id>0) e.image[0].style = "width:50%;height:100%;display:inline-block;";
-            else e.image[0].style = "width:100%;height:100%;display:inline-block;";
-            if(e.element) cornerstone.resize(e.element.element);
-        })
         this.setActiveElement(id);
         return id;        
     }
@@ -41,11 +36,6 @@ class Viewer {
         if(this.elements[id].element) this.elements[id].element.destroy();
         this.elements[id].image.remove();
         this.elements.pop();
-        this.elements.forEach(e => {
-            if(id>1) e.image[0].style = "width:50%;height:100%;display:inline-block;";
-            else e.image[0].style = "width:100%;height:100%;display:inline-block;";
-            if(e.element) cornerstone.resize(e.element.element);
-        });
         this.setActiveElement(id-1);
     }
     loadFile(into, file){ 
@@ -80,15 +70,15 @@ class Viewer {
         if(this.elements[this.active]) return this.elements[this.active].element;
         else return undefined;
     }
-    doubleView(value){
-        if(value){
-            this.createElement();
-            this.DoubleView = true;
-        }
-        else {
-            this.destroyLastElement();
-            this.DoubleView = false;
-        }
+    splitScreen(rows, columns){
+        const count = rows * columns;
+        const width = 100/columns + '%';
+        const height = 100/rows + '%';
+        if(count > this.elements.length) 
+            for(var i = this.elements.length; i < count; i++) this.createElement();
+        else if(count < this.elements.length) 
+            for(var i = this.elements.length; i > count; i--) this.destroyLastElement();
+        this._paginageElements(width, height);
     }
     openSettings(){
         let element = this.getActiveElement();
@@ -175,6 +165,12 @@ class Viewer {
         this.patient = patientId;
     }
 
+    _paginageElements(width, height){
+        this.elements.forEach(e => {
+            e.image[0].style = "width:"+width+";height:"+height+";display:inline-block;";
+            if(e.element) cornerstone.resize(e.element.element);
+        });
+    }
     _fetchStudies(){
         let modal = $("#modal-content");
         if(!this.client){
@@ -421,14 +417,11 @@ class Viewer {
                 $("#"+tool.id).removeClass('disabled');
                 $("#"+tool.id).prop('disabled', false);
 
-                if(!element && tool.id != "home" && tool.id != "connect" && tool.id != "open" && tool.id != "double-view"){
+                if(!element && tool.id != "home" && tool.id != "connect" && tool.id != "open" && tool.id != "split-screen"){
                     $("#"+tool.id).prop('disabled', true);
                     $("#"+tool.id).addClass('disabled');
                 }
                 else {
-                    if(i==0){
-                        if(tool.id == "double-view" && this.DoubleView) $("#"+tool.id).addClass('active')
-                    }
                     if(i==2){
                         if(element && tool.id == "markers" && element.Orientation) $("#"+tool.id).addClass('active');
                         else if(element && tool.id == "scale" && element.Scale) $("#"+tool.id).addClass('active');
@@ -465,7 +458,19 @@ class Viewer {
         $('#file').on("change", function(e){
             const file = e.target.files[0];
             _this.loadFile(_this.active, file);
-        }); 
+        });
+        const app = $('body')[0];
+        app.onresize = function(){
+            _this.elements.forEach(e => {
+                if(e.element) cornerstone.resize(e.element.element)
+            });
+        }
+        window.addEventListener('click', function(e) {
+            while (document.getElementsByClassName('context-menu')[0]) {
+                document.getElementsByClassName('context-menu')[0].remove();
+            }
+            if(e.target != $('#split-menu')[0] && e.target != $('#split-screen') && $('#split-screen').children()[0]!=(e.target)) $('#split-menu').remove();
+        });
     }
 }
 class DICOMImage {
@@ -599,6 +604,9 @@ class DICOMImage {
                 this.showDrawings(true);
                 cornerstoneTools.seedAnnotate.activate(this.element, 1);
                 break;
+            case 'crop':
+                this._unsetLMBTool();
+                this.LMBTool = 'crop';
             case 'zoom':
                 this._unsetRMBTool();
                 this.RMBTool = 'zoom';
@@ -633,7 +641,6 @@ class DICOMImage {
             this.Active = false;
         }
     }
-    
     _setMeta(imageData){
         this.metaData = imageData;
         this.stack.id = this.imageId
@@ -666,6 +673,8 @@ class DICOMImage {
                 break;
             case 'seed':
                 cornerstoneTools.seedAnnotate.deactivate(this.element, 1);
+                break;
+            case 'crop':
                 break;
         }
     }    
@@ -728,9 +737,6 @@ class DICOMImage {
         this.element.addEventListener("contextmenu", function(event) {
             _this._contextMenu(event);
         });
-        window.addEventListener('click', function(e) {
-            _this._deleteAllMenus();
-        });
     }
     _mouseMove(event) {
         if(!this.stack.imageIds[0] || !this.Meta) return;
@@ -783,7 +789,9 @@ class DICOMImage {
     }
     _contextMenu(event) {
         if(!this.Active) return;
-        this._deleteAllMenus();
+        while (document.getElementsByClassName('context-menu')[0]) {
+            document.getElementsByClassName('context-menu')[0].remove();
+        }
         const supportedTools = ['length', 'ellipticalRoi', 'rectangleRoi', 'simpleAngle', 'probe', 'arrowAnnotate', 'seedAnnotate'];
         const pixelCoords = {x: event.offsetX, y: event.offsetY};
         const element = this.element;
@@ -808,11 +816,6 @@ class DICOMImage {
         if(success) {
             $("body").append('<div id="context" class="context-menu" style="top:'+event.pageY+';left:'+event.pageX+';"></div>');
             childs.forEach(e => $("#context").append(e));
-        }
-    }
-    _deleteAllMenus(){
-        while (document.getElementsByClassName('context-menu')[0]) {
-            document.getElementsByClassName('context-menu')[0].remove();
         }
     }
     _Loading(value){
@@ -912,6 +915,7 @@ function setCornerstoneConfig(){
     });
 }
 
+let viewer;
 $(document).ready(() => {
     setCornerstoneConfig();
     var toolgroups = [
@@ -935,16 +939,45 @@ $(document).ready(() => {
                 }
             },
             {
-                id: 'double-view', icon: 'icons/squares.svg',
+                id: 'split-screen', icon: 'icons/squares.svg',
                 click: function(e){
-                    if(viewer.DoubleView) {
-                        viewer.doubleView(false);
-                        $("#double-view").removeClass("active");
+                    if($('#split-menu').length>0) return;
+                    const rect = this.getBoundingClientRect();
+                    const left = rect.left;
+                    const top = rect.top + rect.height;
+
+                    $('body').append('<div id="split-menu" class="split-menu" style="top:'+top+';left:'+left+'">'+
+                        '<div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><br>'+
+                        '<div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><br>'+
+                        '<div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><br>'+
+                        '<div class="split-node"></div><div class="split-node"></div><div class="split-node"></div><div class="split-node"></div></div>');
+                    const nodes = $('#split-menu').children();
+                    var nodeArray = [];
+                    var tempArray = [];
+                    for(let i = 0; i< nodes.length; i++){
+                        if(nodes[i].nodeName=='DIV') tempArray.push(nodes[i]);
+                        else {
+                            nodeArray.push(tempArray);
+                            tempArray = [];
+                        }
                     }
-                    else {
-                        viewer.doubleView(true);
-                        $("#double-view").addClass("active");
-                    }
+                    nodeArray.push(tempArray);
+
+                    nodeArray.forEach((row, i) => {
+                        row.forEach((n,j) => {
+                            n.addEventListener('mouseover', function(e) {
+                                nodeArray.forEach((ROW, I) => {
+                                    ROW.forEach((N, J) => {
+                                        if(I<=i && J<=j) N.classList.add('split-active');
+                                        else N.classList.remove('split-active');
+                                    })
+                                })
+                            })
+                            n.addEventListener('click', function(e) {
+                                viewer.splitScreen(i+1, j+1);
+                            })
+                        })
+                    })
                 }
             },
             {
@@ -965,7 +998,7 @@ $(document).ready(() => {
                 id: 'invert', icon: 'icons/invert.svg',
                 click: function(e){
                     const element = viewer.getActiveCornerstoneElement();
-                    const viewport = cornerstone.getViewport(element);
+                    const viewport = cornerstone.getViewport(element);                    
                     viewport.invert = !viewport.invert;
                     cornerstone.setViewport(element, viewport);
                 }
@@ -1171,6 +1204,15 @@ $(document).ready(() => {
                     element.setTool('seed');
                     $("#seed").addClass("active");
                 }
+            },
+            {
+                id: 'crop', icon: 'icons/crop.svg',
+                click: function(e){
+                    const element = viewer.getActiveElement();
+                    if(element.LMBTool != '') $("#"+element.LMBTool).removeClass("active");
+                    element.setTool('crop');
+                    $("#crop").addClass("active");
+                }
             }
         ],
         [
@@ -1213,7 +1255,7 @@ $(document).ready(() => {
             }
         ]
     ];
-    const viewer = new Viewer(toolgroups);
+    viewer = new Viewer(toolgroups);
     let study = window.location.pathname.replace("/", '');
     if(study != 'viewer'){
         viewer.loadStudie(study);

@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
                 var warning = document.createElement('div');
                 warning.classList.add('warning');
                 warning.id = 'errormessage';
-                warning.innerHTML += 'Error! File was not uploaded.';
+                warning.innerHTML += error;
                 app.innerHTML = '';
                 app.appendChild(warning);
             });
